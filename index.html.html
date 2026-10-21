@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Simulador de disoluciones 4º ESO - @cesarfyq</title>
+<style>
+body{font-family:Arial;background:#eef4f8;margin:20px}
+.card{background:#fff;padding:15px;border-radius:12px;box-shadow:0 2px 8px #0002;margin-bottom:15px}
+.container{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+input,select,button{padding:6px;margin:4px}
+.beaker{height:320px;width:170px;border:4px solid #333;border-top:none;border-radius:0 0 18px 18px;position:relative;overflow:hidden;background:white;margin:auto}
+.liquid{position:absolute;bottom:0;width:100%;transition:height 0.4s ease, background 0.4s ease}
+.small{font-size:.9em;color:#444}
+
+.frac{display:inline-block;vertical-align:middle;text-align:center;line-height:1.15}
+.frac .top{display:block;border-bottom:1px solid #000;padding:0 4px}
+.frac .bottom{display:block;padding:0 4px}
+.eq{margin:10px 0}
+
+</style></head><body>
+
+<div class="card">
+<h2>🧪 Simulador de disoluciones - @cesarfyq</h2>
+<p class="small">
+Simulador educativo para preparar disoluciones con disolvente líquido y soluto sólido o líquido. En el segundo de los casos, se consideran <b>volúmenes aditivos</b> (modelo simplificado).<br>
+Úsalo con un máximo de <b>500 mL totales</b> de disolución.<br>
+En la zona izquierda, selecciona el tipo de soluto (sólido o líquido) y el compuesto a usar (incluye su información necesaria). También puedes usar la opción <b>Personalizado</b>, introduciendo manualmente la información necesaria.<br>
+Con todo ello, puedes observar las concentraciones calculadas en la zona derecha.
+</p></div>
+
+<div class="container">
+<div class="card">
+<h3>Soluto</h3>
+<select id="tipo"><option>Sólido</option><option>Líquido</option></select>
+<select id="soluto"></select>
+
+<div id="MMpersBox" style="display:none">Masa molar personalizada (g/mol): <input id="MMpers" type="number" value="100"></div>
+<div id="RhopersBox" style="display:none">Densidad personalizada (g/mL): <input id="Rhopers" type="number" value="1"></div>
+
+<div>Masa molar del soluto: <span id="MM"></span> g/mol</div>
+<div id="densSol"></div>
+
+<div>Masa soluto (g): <input id="mSol" type="number" value="20"></div>
+<div id="vSolBox">Volumen soluto (mL): <input id="vSol" type="number" value="25"></div>
+
+<h3>Disolvente</h3>
+<select id="disolvente"></select>
+
+<div id="rhoDisBox" style="display:none">Densidad personalizada (g/mL):
+<input id="rhoDisPers" type="number" value="1">
+<br>Masa molar del disolvente (g/mol):
+<input id="MMdisPers" type="number" value="18.02"></div>
+
+<div>Masa molar del disolvente: <span id="MMdis"></span> g/mol</div>
+<div>Densidad del disolvente: <span id="rhoDis"></span> g/mL</div>
+<div>Volumen disolvente (mL): <input id="vDis" type="number" value="200"></div>
+<br>
+<div class="beaker">
+<div class="liquid" id="liq"></div>
+</div>
+
+</div>
+
+<div class="card">
+<h3>Resultados</h3>
+
+<div id="calcArea"></div>
+
+<div id="warning" style="color:#b00;font-weight:bold"></div>
+
+</div></div>
+
+<script>
+const solids={"NaCl":[58.44],"CuSO4":[159.61],"KMnO4":[158.03],"Glucosa":[180.16],"Personalizado":[100]};
+const liquids={"Etanol":[46.07,0.789],"Acetona":[58.08,0.784],"Glicerina":[92.09,1.26],"Ácido acético":[60.05,1.049],"Personalizado":[100,1]};
+const solvents={"Agua":[1,18.02],"Etanol":[0.789,46.07],"Glicerina":[1.26,92.09],"Personalizado":[1,18.02]};
+
+const tipo=document.getElementById("tipo");
+const soluto=document.getElementById("soluto");
+const dis=document.getElementById("disolvente");
+
+for(let k in solvents){dis.add(new Option(k,k));}
+
+function refill(){
+soluto.innerHTML="";
+let src=(tipo.value=="Sólido")?solids:liquids;
+for(let k in src){soluto.add(new Option(k,k));}
+update();
+}
+
+function update(){
+
+let src=(tipo.value=="Sólido")?solids:liquids;
+let s=soluto.value;
+
+vSolBox.style.display=(tipo.value=="Líquido")?"block":"none";
+MMpersBox.style.display=(s=="Personalizado")?"block":"none";
+RhopersBox.style.display=(tipo.value=="Líquido"&&s=="Personalizado")?"block":"none";
+
+let MM=(s=="Personalizado")?parseFloat(MMpers.value||100):src[s][0];
+document.getElementById("MM").textContent=MM.toFixed(2);
+
+let rhoSol=0;
+if(tipo.value=="Líquido"){
+rhoSol=(s=="Personalizado")?parseFloat(Rhopers.value||1):src[s][1];
+densSol.textContent="Densidad del soluto: "+rhoSol.toFixed(3)+" g/mL";
+}else{densSol.textContent="";}
+
+rhoDisBox.style.display=(dis.value=="Personalizado")?"block":"none";
+
+let rhoDis=(dis.value=="Personalizado")?parseFloat(rhoDisPers.value||1):solvents[dis.value][0];
+let MMdis=(dis.value=="Personalizado")?parseFloat(MMdisPers.value||18.02):solvents[dis.value][1];
+document.getElementById("rhoDis").textContent=rhoDis.toFixed(3);
+document.getElementById("MMdis").textContent=MMdis.toFixed(2);
+
+let m=parseFloat(mSol.value)||0;
+let vS=(tipo.value=="Líquido")?(parseFloat(vSol.value)||0):0;
+
+if(tipo.value=="Líquido"){
+m=vS*rhoSol;
+mSol.value=m.toFixed(2);
+}
+
+let vD=parseFloat(vDis.value)||0;
+
+let Vt=(tipo.value=="Sólido")?vD:vD+vS;
+let Mt=m+vD*rhoDis;
+
+let gL=Vt?m/(Vt/1000):0;
+let mm=Mt?100*m/Mt:0;
+let vv=Vt?100*vS/Vt:0;
+let Mol=Vt?((m/MM)/(Vt/1000)):0;
+
+calcArea.innerHTML=`
+<div><b>Volumen total:</b> ${Vt.toFixed(2)} mL</div>
+<div><b>Masa total:</b> ${Mt.toFixed(2)} g</div>
+
+<div class="eq">
+<div>C (g/L) = <span class="frac"><span class="top">g de soluto</span><span class="bottom">L de disolución</span></span></div>
+<div style="margin-top:6px">
+C (g/L) = <span class="frac"><span class="top">${m.toFixed(2)} g</span><span class="bottom">${(Vt/1000).toFixed(3)} L</span></span>
+= <b>${gL.toFixed(2)} g/L</b>
+</div>
+</div>
+
+<div class="eq">
+<div>C (% en masa) = (<span class="frac"><span class="top">g de soluto</span><span class="bottom">g de disolución</span></span>)·100</div>
+<div style="margin-top:6px">
+C (% en masa) = (<span class="frac"><span class="top">${m.toFixed(2)} g</span><span class="bottom">${Mt.toFixed(2)} g</span></span>)·100
+= <b>${mm.toFixed(2)} %</b>
+</div>
+</div>
+
+<div class="eq">
+<div>C (% en volumen) = (<span class="frac"><span class="top">mL de soluto</span><span class="bottom">mL de disolución</span></span>)·100</div>
+<div style="margin-top:6px">
+C (% en volumen) = (<span class="frac"><span class="top">${vS.toFixed(2)} mL</span><span class="bottom">${Vt.toFixed(2)} mL</span></span>)·100
+= <b>${vv.toFixed(2)} %</b>
+</div>
+</div>
+
+<div class="eq">
+<div>Molaridad (M o mol/L) = <span class="frac"><span class="top">mol de soluto</span><span class="bottom">L de disolución</span></span></div>
+<div style="margin-top:6px">
+Molaridad = <span class="frac"><span class="top">${(m/MM).toFixed(3)} mol</span><span class="bottom">${(Vt/1000).toFixed(3)} L</span></span>
+= <b>${Mol.toFixed(3)} M = ${Mol.toFixed(3)} mol/L</b>
+</div>
+</div>
+
+
+`;
+warning.textContent=(Vt>500)?"⚠ Recomendado ≤500 mL":"";
+
+let inten=Math.min(gL/300,1);
+let c=Math.round(245-170*inten);
+liq.style.background=`rgb(${c},${c},255)`;
+liq.style.height=Math.min((Vt/500)*100,100)+"%";
+}
+
+tipo.addEventListener("change",refill);
+soluto.addEventListener("change",update);
+dis.addEventListener("change",update);
+["mSol","vSol","vDis","MMpers","Rhopers","rhoDisPers","MMdisPers"].forEach(id=>{
+document.getElementById(id).addEventListener("input",update);
+});
+
+refill();
+</script></body></html>
